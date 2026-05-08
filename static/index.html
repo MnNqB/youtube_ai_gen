@@ -3,258 +3,239 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Video Detector</title>
+  <title>YouTube AI Video Detector — Muniza Naqvi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg: #0d0d0f;
-      --surface: #16161a;
-      --border: #2a2a30;
-      --accent: #7c6af7;
-      --accent-dim: #3d3578;
-      --text: #e8e8f0;
-      --muted: #6b6b80;
-      --real: #34c77b;
-      --ai-sora: #f76a6a;
-      --ai-veo: #f7a46a;
-      --radius: 12px;
+      --bg: #0a0a0f; --bg2: #111118; --bg3: #18181f; --card: #1a1a24;
+      --border: rgba(255,255,255,0.09); --accent: #00e5c3; --accent2: #7a90a8;
+      --text: #c8cad4; --muted: #8a8fa8; --heading: #f0f1f5;
     }
-
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
+      font-family: 'Inter', sans-serif;
       background: var(--bg);
       color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 40px 24px;
+      line-height: 1.65;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.1;
+    }
+    .orb-1 { width: 500px; height: 500px; background: var(--accent); top: -200px; left: -150px; }
+    .orb-2 { width: 400px; height: 400px; background: var(--accent2); bottom: -150px; right: -100px; }
+
+    /* Back link */
+    .back-link {
+      position: fixed; top: 24px; left: 24px; z-index: 10;
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--muted); font-size: 0.82rem; font-weight: 500;
+      text-decoration: none; letter-spacing: 0.04em;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    /* Card */
+    .card {
+      position: relative; z-index: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 44px;
+      width: 100%;
+      max-width: 580px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
     }
 
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 40px 36px;
-      width: 100%;
-      max-width: 560px;
+    /* Header */
+    .method-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,229,195,0.08);
+      border: 1px solid rgba(0,229,195,0.2);
+      color: var(--accent);
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 5px 12px; border-radius: 100px;
+      margin-bottom: 20px;
     }
+    .method-tag::before {
+      content: '';
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
     h1 {
-      font-size: 1.4rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      margin-bottom: 6px;
+      font-size: 1.7rem; font-weight: 800;
+      color: var(--heading); letter-spacing: -0.03em;
+      margin-bottom: 8px; line-height: 1.1;
     }
-
     .subtitle {
-      font-size: 0.85rem;
-      color: var(--muted);
-      margin-bottom: 28px;
-      line-height: 1.5;
+      font-size: 0.87rem; color: var(--muted);
+      margin-bottom: 32px; line-height: 1.65;
     }
 
-    .method-tag {
-      display: inline-block;
-      font-size: 0.7rem;
-      background: var(--accent-dim);
-      color: var(--accent);
-      border-radius: 4px;
-      padding: 2px 8px;
-      margin-bottom: 20px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
+    /* Input */
     .input-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 24px;
+      display: flex; gap: 10px; margin-bottom: 20px;
     }
-
     input[type="text"] {
       flex: 1;
-      background: var(--bg);
+      background: var(--bg2);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 12px 14px;
+      padding: 13px 16px;
       color: var(--text);
-      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
       outline: none;
       transition: border-color 0.2s;
     }
-
     input[type="text"]::placeholder { color: var(--muted); }
     input[type="text"]:focus { border-color: var(--accent); }
 
-    button {
+    button.btn-primary {
       background: var(--accent);
-      color: #fff;
+      color: #0a0a0f;
       border: none;
       border-radius: 8px;
-      padding: 12px 20px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: opacity 0.2s;
+      padding: 13px 22px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      transition: background 0.2s, transform 0.15s;
     }
+    button.btn-primary:hover { background: #00ffd8; transform: translateY(-1px); }
+    button.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    button:hover { opacity: 0.85; }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    /* Status / progress */
+    /* Status */
     .status {
-      font-size: 0.82rem;
-      color: var(--muted);
-      min-height: 20px;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-size: 0.82rem; color: var(--muted);
+      min-height: 22px; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px;
     }
-
     .spinner {
-      width: 14px;
-      height: 14px;
+      width: 14px; height: 14px;
       border: 2px solid var(--border);
       border-top-color: var(--accent);
       border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      flex-shrink: 0;
+      animation: spin 0.7s linear infinite; flex-shrink: 0;
     }
-
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .error {
+      background: rgba(255,79,79,0.08);
+      border: 1px solid rgba(255,79,79,0.25);
+      border-radius: 10px; padding: 14px 16px;
+      font-size: 0.83rem; color: #f08080;
+      display: none; margin-bottom: 18px;
+    }
+    .error.visible { display: block; }
 
     /* Result panel */
     .result {
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      display: none;
+      border-radius: 14px; padding: 26px;
+      display: none; margin-bottom: 18px;
+      transition: border-color 0.3s;
     }
-
     .result.visible { display: block; }
-    .result.real { border-color: var(--real); }
-    .result.ai-sora { border-color: var(--ai-sora); }
-    .result.ai-veo { border-color: var(--ai-veo); }
+    .result.real    { border-color: #00e5c3; }
+    .result.ai-sora { border-color: #f76a6a; }
+    .result.ai-veo  { border-color: #f7a46a; }
 
     .result-label {
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin-bottom: 6px;
+      font-size: 1.05rem; font-weight: 700;
+      margin-bottom: 8px; color: var(--heading);
     }
-
-    .result.real .result-label { color: var(--real); }
-    .result.ai-sora .result-label { color: var(--ai-sora); }
-    .result.ai-veo .result-label { color: var(--ai-veo); }
+    .result.real    .result-label { color: #00e5c3; }
+    .result.ai-sora .result-label { color: #f76a6a; }
+    .result.ai-veo  .result-label { color: #f7a46a; }
 
     .confidence-bar-wrap {
       background: var(--border);
-      border-radius: 4px;
-      height: 6px;
-      margin: 12px 0;
-      overflow: hidden;
+      border-radius: 4px; height: 5px;
+      margin: 12px 0; overflow: hidden;
     }
-
-    .confidence-bar {
-      height: 100%;
-      border-radius: 4px;
-      transition: width 0.6s ease;
-    }
-
-    .result.real .confidence-bar { background: var(--real); }
-    .result.ai-sora .confidence-bar { background: var(--ai-sora); }
-    .result.ai-veo .confidence-bar { background: var(--ai-veo); }
+    .confidence-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+    .result.real    .confidence-bar { background: #00e5c3; }
+    .result.ai-sora .confidence-bar { background: #f76a6a; }
+    .result.ai-veo  .confidence-bar { background: #f7a46a; }
 
     .confidence-text {
-      font-size: 0.78rem;
-      color: var(--muted);
-      margin-bottom: 14px;
+      font-size: 0.77rem; color: var(--muted); margin-bottom: 14px;
     }
-
     .result-detail {
-      font-size: 0.82rem;
-      color: var(--muted);
-      line-height: 1.55;
-      margin-bottom: 16px;
+      font-size: 0.83rem; color: var(--muted);
+      line-height: 1.65; margin-bottom: 18px;
     }
-
-    .stats {
-      display: flex;
-      gap: 16px;
-    }
-
+    .stats { display: flex; gap: 12px; }
     .stat {
-      background: var(--bg);
+      background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      flex: 1;
+      border-radius: 10px; padding: 12px 16px; flex: 1;
     }
-
     .stat-label {
-      font-size: 0.68rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 4px;
+      font-size: 0.67rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px;
     }
-
-    .stat-value {
-      font-size: 1.05rem;
-      font-weight: 600;
-    }
-
-    .error {
-      background: #2a1010;
-      border: 1px solid #5a1a1a;
-      border-radius: 8px;
-      padding: 14px 16px;
-      font-size: 0.83rem;
-      color: #f08080;
-      display: none;
-    }
-
-    .error.visible { display: block; }
+    .stat-value { font-size: 1.1rem; font-weight: 700; color: var(--heading); }
 
     /* Legend */
     .legend {
-      margin-top: 28px;
-      border-top: 1px solid var(--border);
-      padding-top: 20px;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
+      margin-top: 28px; border-top: 1px solid var(--border); padding-top: 22px;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
     }
+    .legend-item { font-size: 0.71rem; color: var(--muted); line-height: 1.55; }
+    .legend-title { font-size: 0.73rem; font-weight: 700; margin-bottom: 3px; }
+    .legend-item.sora .legend-title { color: #f76a6a; }
+    .legend-item.veo  .legend-title { color: #f7a46a; }
+    .legend-item.real .legend-title { color: #00e5c3; }
 
-    .legend-item {
-      font-size: 0.72rem;
-      color: var(--muted);
-      line-height: 1.5;
+    /* Footer credit */
+    .credit {
+      position: relative; z-index: 1;
+      margin-top: 24px; font-size: 0.75rem; color: var(--muted);
+      text-align: center;
     }
-
-    .legend-title {
-      font-size: 0.74rem;
-      font-weight: 600;
-      margin-bottom: 3px;
-    }
-
-    .legend-item.sora .legend-title { color: var(--ai-sora); }
-    .legend-item.veo .legend-title { color: var(--ai-veo); }
-    .legend-item.real .legend-title { color: var(--real); }
+    .credit a { color: var(--accent); text-decoration: none; }
+    .credit a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <a href="javascript:history.back()" class="back-link">
+    <i class="fa fa-arrow-left fa-xs"></i> Back to Portfolio
+  </a>
+
   <div class="card">
-    <span class="method-tag">Laplacian Noise Analysis</span>
+    <div class="method-tag">Laplacian Noise Analysis</div>
     <h1>AI Video Detector</h1>
-    <p class="subtitle">Paste a YouTube URL to analyse its noise signature and estimate whether the video was generated by an AI model.</p>
+    <p class="subtitle">Paste a YouTube URL to analyse its noise signature and estimate whether the video was generated by a diffusion model like Sora or Veo.</p>
 
     <div class="input-row">
       <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." />
-      <button id="analyzeBtn" onclick="analyze()">Analyze</button>
+      <button class="btn-primary" id="analyzeBtn" onclick="analyze()">
+        <i class="fa fa-search"></i> Analyze
+      </button>
     </div>
 
     <div class="status" id="status"></div>
@@ -295,6 +276,11 @@
     </div>
   </div>
 
+  <div class="credit">
+    Built by <a href="https://www.linkedin.com/in/statisticianmunizanaqvi/" target="_blank">Muniza Naqvi</a>
+    &nbsp;·&nbsp; Laplacian high-pass filtering on 15 sampled frames
+  </div>
+
   <script>
     const btn = document.getElementById('analyzeBtn');
     const statusEl = document.getElementById('status');
@@ -302,16 +288,12 @@
     const resultEl = document.getElementById('result');
 
     function setStatus(msg) {
-      statusEl.innerHTML = msg
-        ? `<div class="spinner"></div><span>${msg}</span>`
-        : '';
+      statusEl.innerHTML = msg ? `<div class="spinner"></div><span>${msg}</span>` : '';
     }
-
     function showError(msg) {
       errorEl.textContent = msg;
       errorEl.classList.add('visible');
     }
-
     function clearUI() {
       errorEl.classList.remove('visible');
       resultEl.classList.remove('visible', 'real', 'ai-sora', 'ai-veo');
@@ -320,24 +302,17 @@
     async function analyze() {
       const url = document.getElementById('urlInput').value.trim();
       if (!url) return;
-
       btn.disabled = true;
       clearUI();
-      setStatus('Downloading video (this may take 30–60 seconds)…');
-
+      setStatus('Downloading video — this may take 30–60 seconds…');
       try {
         const resp = await fetch('/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url }),
         });
-
         const data = await resp.json();
-
-        if (!resp.ok) {
-          throw new Error(data.detail || 'Analysis failed');
-        }
-
+        if (!resp.ok) throw new Error(data.detail || 'Analysis failed');
         setStatus('');
         renderResult(data);
       } catch (err) {
@@ -349,26 +324,20 @@
     }
 
     function renderResult(data) {
-      const label = data.label;
-      const cls = label.includes('Sora') ? 'ai-sora'
-                : label.includes('Veo')  ? 'ai-veo'
+      const cls = data.label.includes('Sora') ? 'ai-sora'
+                : data.label.includes('Veo')  ? 'ai-veo'
                 : 'real';
-
       resultEl.className = `result visible ${cls}`;
-      document.getElementById('resultLabel').textContent = label;
+      document.getElementById('resultLabel').textContent = data.label;
       document.getElementById('confidenceText').textContent = `${data.confidence}% confidence`;
       document.getElementById('resultDetail').textContent = data.detail;
       document.getElementById('statStd').textContent = data.noise_std;
       document.getElementById('statMean').textContent = data.noise_mean;
-
-      // Animate bar
       const bar = document.getElementById('confidenceBar');
       bar.style.width = '0%';
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          bar.style.width = data.confidence + '%';
-        });
-      });
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        bar.style.width = data.confidence + '%';
+      }));
     }
 
     document.getElementById('urlInput').addEventListener('keydown', e => {
