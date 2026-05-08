@@ -96,6 +96,7 @@ def analyze(req: AnalyzeRequest):
             [
                 "yt-dlp",
                 "--no-playlist",
+                "--extractor-args", "youtube:player_client=android,ios,web",
                 "-f", "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]/best",
                 "--merge-output-format", "mp4",
                 "-o", out_template,
