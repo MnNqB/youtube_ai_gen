@@ -53,15 +53,6 @@ The thresholds below were derived empirically by running the analysis on known S
 - **Backend:** FastAPI + yt-dlp + OpenCV + NumPy
 - **Frontend:** Vanilla HTML/CSS/JS (no dependencies, embeddable in a portfolio)
 
-## Running locally
-
-```bash
-pip install fastapi uvicorn yt-dlp opencv-python-headless numpy python-multipart
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-Then open `http://localhost:8000`, paste a YouTube URL, and hit Analyze.
-
 ## Limitations
 
 This is a heuristic signal, not a classifier trained on labelled data. It works because diffusion noise is a genuine physical property of the generation process — but compression, re-encoding, or post-processing can shift the numbers. Treat results as an indicator, not a verdict.
