@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube AI Video Detector — Muniza Naqvi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0a0a0f; --bg2: #111118; --bg3: #18181f; --card: #1a1a24;
+      --border: rgba(255,255,255,0.09); --accent: #00e5c3; --accent2: #7a90a8;
+      --text: #c8cad4; --muted: #8a8fa8; --heading: #f0f1f5;
+      --red: #f76a6a; --orange: #f7a46a;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 24px 60px;
+      line-height: 1.65;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+    .orb { position: fixed; border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0; opacity: 0.1; }
+    .orb-1 { width: 500px; height: 500px; background: var(--accent); top: -200px; left: -150px; }
+    .orb-2 { width: 400px; height: 400px; background: var(--accent2); bottom: -150px; right: -100px; }
+
+    .back-link {
+      position: fixed; top: 24px; left: 24px; z-index: 10;
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--muted); font-size: 0.82rem; font-weight: 500;
+      text-decoration: none; letter-spacing: 0.04em; transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--accent); }
+
+    /* ─── Monster Character ─── */
+    #monster-wrapper {
+      position: relative; z-index: 1;
+      width: 120px; height: 140px;
+      margin: 0 auto 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Idle: gentle float */
+    #monster-wrapper.state-idle #monster-svg {
+      animation: monster-float 3s ease-in-out infinite;
+    }
+    @keyframes monster-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    /* Analyzing: sway */
+    #monster-wrapper.state-analyzing #monster-svg {
+      animation: monster-sway 0.6s ease-in-out infinite alternate;
+    }
+    @keyframes monster-sway {
+      from { transform: rotate(-5deg) translateY(-2px); }
+      to   { transform: rotate(5deg)  translateY(2px); }
+    }
+    /* Scan line on the magnifying glass lens */
+    #monster-wrapper.state-analyzing #scan-line {
+      display: block;
+      animation: scan 0.9s linear infinite;
+    }
+    #scan-line { display: none; }
+    @keyframes scan {
+      0%   { transform: translateY(-8px); opacity: 0; }
+      20%  { opacity: 1; }
+      80%  { opacity: 1; }
+      100% { transform: translateY(8px);  opacity: 0; }
+    }
+
+    /* Cookies: shake + show speech bubble */
+    #monster-wrapper.state-cookies #monster-svg {
+      animation: monster-shake 0.4s linear infinite;
+    }
+    @keyframes monster-shake {
+      0%,100% { transform: translateX(0); }
+      25%  { transform: translateX(-5px) rotate(-3deg); }
+      75%  { transform: translateX(5px)  rotate(3deg); }
+    }
+    #monster-wrapper.state-cookies #speech-bubble { display: block; }
+    #speech-bubble { display: none; position: absolute; top: -28px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+    #speech-bubble text { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; fill: var(--heading); }
+
+    /* ─── Card ─── */
+    .card {
+      position: relative; z-index: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 44px 40px;
+      width: 100%; max-width: 600px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+    }
+
+    .method-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,229,195,0.08);
+      border: 1px solid rgba(0,229,195,0.2);
+      color: var(--accent);
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 5px 12px; border-radius: 100px; margin-bottom: 16px;
+    }
+    .method-tag::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    h1 { font-size: 1.7rem; font-weight: 800; color: var(--heading); letter-spacing: -0.03em; margin-bottom: 6px; }
+    .subtitle { font-size: 0.86rem; color: var(--muted); margin-bottom: 28px; }
+
+    /* ─── Tabs ─── */
+    .tabs { display: flex; gap: 2px; margin-bottom: 24px; background: var(--bg2); border-radius: 10px; padding: 3px; }
+    .tab-btn {
+      flex: 1; padding: 9px 0; border: none; border-radius: 8px; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 0.83rem; font-weight: 600;
+      background: transparent; color: var(--muted); transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--card); color: var(--heading); box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ─── File Upload ─── */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 12px;
+      padding: 40px 20px; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--bg2); margin-bottom: 16px;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(0,229,195,0.04); }
+    .drop-icon { font-size: 2rem; margin-bottom: 10px; opacity: 0.5; }
+    .drop-text { font-size: 0.86rem; color: var(--muted); }
+    .drop-text strong { color: var(--accent); }
+    .file-chosen { font-size: 0.8rem; color: var(--accent); margin-top: 8px; min-height: 18px; }
+    #fileInput { display: none; }
+
+    /* ─── URL Input ─── */
+    .input-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    input[type="text"], textarea {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 14px; color: var(--text);
+      font-family: 'Inter', sans-serif; font-size: 0.88rem; outline: none;
+      transition: border-color 0.2s; width: 100%;
+    }
+    input[type="text"]::placeholder, textarea::placeholder { color: var(--muted); }
+    input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+
+    button.btn-primary {
+      background: var(--accent); color: #0a0a0f; border: none; border-radius: 8px;
+      padding: 12px 22px; font-family: 'Inter', sans-serif; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: background 0.2s, transform 0.15s;
+    }
+    button.btn-primary:hover { background: #00ffd8; transform: translateY(-1px); }
+    button.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-full { width: 100%; }
+
+    /* ─── Cookies Fallback ─── */
+    #cookies-section { margin-top: 14px; }
+    details { background: rgba(255,160,50,0.05); border: 1px solid rgba(255,160,50,0.2); border-radius: 10px; }
+    summary {
+      padding: 12px 16px; cursor: pointer; font-size: 0.83rem;
+      font-weight: 600; color: var(--orange); list-style: none;
+      display: flex; align-items: center; gap: 8px;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: '⚠'; font-size: 1rem; }
+    .cookies-body { padding: 0 16px 16px; }
+    .cookies-hint { font-size: 0.77rem; color: var(--muted); margin-bottom: 10px; line-height: 1.6; }
+    .cookies-hint a { color: var(--accent); }
+    textarea { resize: vertical; min-height: 100px; font-size: 0.77rem; line-height: 1.55; }
+
+    /* ─── Status & Error ─── */
+    .status {
+      font-size: 0.82rem; color: var(--muted); min-height: 22px;
+      margin: 14px 0 0; display: flex; align-items: center; gap: 8px;
+    }
+    .spinner {
+      width: 14px; height: 14px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error {
+      background: rgba(255,79,79,0.08); border: 1px solid rgba(255,79,79,0.25);
+      border-radius: 10px; padding: 13px 15px; font-size: 0.83rem; color: #f08080;
+      display: none; margin-top: 14px;
+    }
+    .error.visible { display: block; }
+
+    /* ─── Result Panel ─── */
+    .result {
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 24px; display: none; margin-top: 20px; transition: border-color 0.3s;
+    }
+    .result.visible { display: block; }
+    .result.real    { border-color: var(--accent); }
+    .result.ai-sora { border-color: var(--red); }
+    .result.ai-veo  { border-color: var(--orange); }
+
+    .result-label { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--heading); }
+    .result.real    .result-label { color: var(--accent); }
+    .result.ai-sora .result-label { color: var(--red); }
+    .result.ai-veo  .result-label { color: var(--orange); }
+
+    .confidence-bar-wrap { background: var(--border); border-radius: 4px; height: 5px; margin: 10px 0 6px; overflow: hidden; }
+    .confidence-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; width: 0%; }
+    .result.real    .confidence-bar { background: var(--accent); }
+    .result.ai-sora .confidence-bar { background: var(--red); }
+    .result.ai-veo  .confidence-bar { background: var(--orange); }
+    .confidence-text { font-size: 0.77rem; color: var(--muted); margin-bottom: 12px; }
+    .result-detail { font-size: 0.83rem; color: var(--muted); line-height: 1.65; margin-bottom: 16px; }
+
+    /* ─── Noise Gauge ─── */
+    .gauge-wrap { margin-bottom: 18px; }
+    .gauge-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+    .gauge-bar {
+      position: relative; height: 12px; border-radius: 6px; overflow: visible;
+      display: flex; margin-bottom: 18px;
+    }
+    .gauge-seg { height: 100%; }
+    .gauge-seg.sora { background: rgba(247,106,106,0.35); border-radius: 6px 0 0 6px; flex: 4.5; }
+    .gauge-seg.real { background: rgba(0,229,195,0.25); flex: 2; }
+    .gauge-seg.veo  { background: rgba(247,164,106,0.35); border-radius: 0 6px 6px 0; flex: 3.5; }
+    .gauge-needle {
+      position: absolute; top: -3px; width: 3px; height: 18px;
+      background: var(--heading); border-radius: 2px; transform: translateX(-50%);
+      transition: left 0.8s cubic-bezier(.4,0,.2,1);
+    }
+    .gauge-labels { display: flex; justify-content: space-between; font-size: 0.66rem; color: var(--muted); margin-top: 2px; }
+    .gauge-labels span { color: var(--muted); }
+    .gauge-labels .l-sora { color: var(--red); }
+    .gauge-labels .l-real { color: var(--accent); text-align: center; flex: 1; }
+    .gauge-labels .l-veo  { color: var(--orange); text-align: right; }
+
+    /* ─── Stats ─── */
+    .stats { display: flex; gap: 10px; margin-bottom: 16px; }
+    .stat { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; flex: 1; }
+    .stat-label { font-size: 0.67rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .stat-value { font-size: 1.1rem; font-weight: 700; color: var(--heading); }
+
+    /* ─── Heatmap ─── */
+    .heatmap-wrap { margin-top: 2px; }
+    .heatmap-title { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+    #heatmapImg { width: 100%; border-radius: 8px; border: 1px solid var(--border); display: block; }
+
+    /* ─── Legend ─── */
+    .legend {
+      margin-top: 28px; border-top: 1px solid var(--border); padding-top: 20px;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+    }
+    .legend-item { font-size: 0.71rem; color: var(--muted); line-height: 1.55; }
+    .legend-title { font-size: 0.73rem; font-weight: 700; margin-bottom: 3px; }
+    .legend-item.sora .legend-title { color: var(--red); }
+    .legend-item.veo  .legend-title { color: var(--orange); }
+    .legend-item.real .legend-title { color: var(--accent); }
+
+    .credit { position: relative; z-index: 1; margin-top: 22px; font-size: 0.75rem; color: var(--muted); text-align: center; }
+    .credit a { color: var(--accent); text-decoration: none; }
+    .credit a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <a href="javascript:history.back()" class="back-link">
+    <i class="fa fa-arrow-left fa-xs"></i> Back to Portfolio
+  </a>
+
+  <!-- Monster character -->
+  <div id="monster-wrapper" class="state-idle">
+    <!-- Speech bubble (cookies state) -->
+    <svg id="speech-bubble" width="130" height="28" viewBox="0 0 130 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="130" height="24" rx="6" fill="#1a1a24" stroke="rgba(247,164,106,0.5)" stroke-width="1.5"/>
+      <polygon points="58,24 66,28 74,24" fill="#1a1a24"/>
+      <text x="65" y="16" text-anchor="middle" fill="#f7a46a" font-size="10" font-weight="700" font-family="Inter, sans-serif">NEED COOKIES! 🍪</text>
+    </svg>
+
+    <svg id="monster-svg" width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Body -->
+      <ellipse cx="60" cy="90" rx="38" ry="42" fill="#1e2d3d"/>
+      <!-- Body shading -->
+      <ellipse cx="60" cy="92" rx="32" ry="36" fill="#182535" opacity="0.4"/>
+
+      <!-- Left leg -->
+      <ellipse cx="46" cy="130" rx="10" ry="7" fill="#162030"/>
+      <!-- Right leg -->
+      <ellipse cx="74" cy="130" rx="10" ry="7" fill="#162030"/>
+      <!-- Left foot bump -->
+      <ellipse cx="40" cy="133" rx="7" ry="5" fill="#0f1820"/>
+      <!-- Right foot bump -->
+      <ellipse cx="80" cy="133" rx="7" ry="5" fill="#0f1820"/>
+
+      <!-- Left arm -->
+      <ellipse cx="26" cy="100" rx="8" ry="14" fill="#1e2d3d" transform="rotate(-15 26 100)"/>
+      <!-- Right arm (holding magnifying glass) -->
+      <ellipse cx="94" cy="100" rx="8" ry="14" fill="#1e2d3d" transform="rotate(15 94 100)"/>
+
+      <!-- Head -->
+      <ellipse cx="60" cy="55" rx="34" ry="32" fill="#243547"/>
+
+      <!-- Head spikes -->
+      <polygon points="38,28 34,10 44,26" fill="#1e2d3d"/>
+      <polygon points="52,22 50,4 60,20" fill="#243547"/>
+      <polygon points="68,22 70,4 60,20" fill="#1e2d3d"/>
+      <polygon points="82,28 86,10 76,26" fill="#243547"/>
+
+      <!-- Eyes: normal state (default / idle / analyzing) -->
+      <g id="eyes-normal">
+        <ellipse cx="46" cy="52" rx="9" ry="9" fill="#00e5c3" opacity="0.9"/>
+        <ellipse cx="74" cy="52" rx="9" ry="9" fill="#00e5c3" opacity="0.9"/>
+        <ellipse cx="46" cy="52" rx="5" ry="5" fill="#0a1520"/>
+        <ellipse cx="74" cy="52" rx="5" ry="5" fill="#0a1520"/>
+        <!-- Eye shine -->
+        <ellipse cx="49" cy="49" rx="2" ry="2" fill="white" opacity="0.8"/>
+        <ellipse cx="77" cy="49" rx="2" ry="2" fill="white" opacity="0.8"/>
+      </g>
+
+      <!-- Eyes: angry (cookies state) - hidden by default -->
+      <g id="eyes-angry" opacity="0">
+        <ellipse cx="46" cy="54" rx="9" ry="7" fill="#f7a46a" opacity="0.9"/>
+        <ellipse cx="74" cy="54" rx="9" ry="7" fill="#f7a46a" opacity="0.9"/>
+        <ellipse cx="46" cy="54" rx="5" ry="5" fill="#0a1520"/>
+        <ellipse cx="74" cy="54" rx="5" ry="5" fill="#0a1520"/>
+        <!-- Angry brow lines -->
+        <line x1="38" y1="44" x2="54" y2="49" stroke="#f7a46a" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="82" y1="44" x2="66" y2="49" stroke="#f7a46a" stroke-width="2.5" stroke-linecap="round"/>
+      </g>
+
+      <!-- Mouth: smile (idle) -->
+      <g id="mouth-smile">
+        <path d="M 46 70 Q 60 80 74 70" stroke="#00e5c3" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </g>
+      <!-- Mouth: open/excited (analyzing) -->
+      <g id="mouth-open" opacity="0">
+        <ellipse cx="60" cy="72" rx="10" ry="6" fill="#0a1520"/>
+        <path d="M 50 72 Q 60 78 70 72" stroke="#00e5c3" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.5"/>
+      </g>
+      <!-- Mouth: frown (cookies) -->
+      <g id="mouth-frown" opacity="0">
+        <path d="M 46 76 Q 60 68 74 76" stroke="#f7a46a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </g>
+
+      <!-- Belly accent dots -->
+      <circle cx="55" cy="95" r="3" fill="#2a4060" opacity="0.6"/>
+      <circle cx="65" cy="100" r="2.5" fill="#2a4060" opacity="0.5"/>
+      <circle cx="57" cy="108" r="2" fill="#2a4060" opacity="0.4"/>
+
+      <!-- Magnifying glass (always on right arm, more visible when analyzing) -->
+      <g id="magnifier" transform="translate(98, 108)">
+        <circle cx="0" cy="0" r="13" stroke="#7a90a8" stroke-width="2.5" fill="#111820" fill-opacity="0.8"/>
+        <line x1="9" y1="9" x2="17" y2="17" stroke="#7a90a8" stroke-width="3" stroke-linecap="round"/>
+        <!-- Scan line inside lens -->
+        <clipPath id="lens-clip">
+          <circle cx="0" cy="0" r="12"/>
+        </clipPath>
+        <line id="scan-line" x1="-11" y1="0" x2="11" y2="0" stroke="#00e5c3" stroke-width="1.5" stroke-linecap="round" clip-path="url(#lens-clip)"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="card">
+    <div class="method-tag">Laplacian Noise Analysis</div>
+    <h1>AI Video Detector</h1>
+    <p class="subtitle">Upload a video or paste a YouTube URL to analyse its noise signature and estimate whether it was generated by a diffusion model.</p>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('upload')">
+        <i class="fa fa-upload fa-xs"></i> File Upload
+      </button>
+      <button class="tab-btn" onclick="switchTab('url')">
+        <i class="fa-brands fa-youtube fa-xs"></i> YouTube URL
+      </button>
+    </div>
+
+    <!-- File Upload Pane -->
+    <div id="pane-upload" class="tab-pane active">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+           ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+        <div class="drop-icon">🎬</div>
+        <div class="drop-text"><strong>Click to choose</strong> or drag &amp; drop a video file</div>
+        <div class="drop-text" style="font-size:0.75rem; margin-top:4px;">MP4, MOV, WebM, MKV, AVI — max 50 MB</div>
+        <div class="file-chosen" id="fileChosen"></div>
+      </div>
+      <input type="file" id="fileInput" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/avi,video/*" onchange="onFileSelected(event)">
+      <button class="btn-primary btn-full" id="uploadBtn" onclick="analyzeUpload()" disabled>
+        <i class="fa fa-microscope"></i> Analyze Video
+      </button>
+    </div>
+
+    <!-- YouTube URL Pane -->
+    <div id="pane-url" class="tab-pane">
+      <div class="input-row">
+        <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." />
+        <button class="btn-primary" id="urlBtn" onclick="analyzeUrl()">
+          <i class="fa fa-search"></i> Analyze
+        </button>
+      </div>
+
+      <!-- Cookies fallback (hidden until needed or user expands) -->
+      <div id="cookies-section">
+        <details id="cookiesDetails">
+          <summary>YouTube requires authentication for this video</summary>
+          <div class="cookies-body">
+            <p class="cookies-hint">
+              Paste your YouTube cookies in Netscape format. You can export them with a browser extension like
+              <a href="https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank" rel="noopener">Get cookies.txt LOCALLY</a>.
+              Your cookies are used once for this request and never stored.
+            </p>
+            <textarea id="cookiesInput" placeholder="# Netscape HTTP Cookie File&#10;.youtube.com	TRUE	/	TRUE	..."></textarea>
+            <div style="margin-top:10px;">
+              <button class="btn-primary btn-full" onclick="analyzeUrl()">
+                <i class="fa fa-cookie-bite"></i> Retry with Cookies
+              </button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="status" id="status"></div>
+
+    <!-- Error -->
+    <div class="error" id="error"></div>
+
+    <!-- Result -->
+    <div class="result" id="result">
+      <div class="result-label" id="resultLabel"></div>
+      <div class="confidence-bar-wrap">
+        <div class="confidence-bar" id="confidenceBar"></div>
+      </div>
+      <div class="confidence-text" id="confidenceText"></div>
+      <div class="result-detail" id="resultDetail"></div>
+
+      <!-- Noise gauge -->
+      <div class="gauge-wrap">
+        <div class="gauge-label">Noise StdDev — Position on Spectrum</div>
+        <div class="gauge-bar">
+          <div class="gauge-seg sora"></div>
+          <div class="gauge-seg real"></div>
+          <div class="gauge-seg veo"></div>
+          <div class="gauge-needle" id="gaugeNeedle" style="left:50%"></div>
+        </div>
+        <div class="gauge-labels">
+          <span class="l-sora">Sora &lt;4.5</span>
+          <span class="l-real">Real 4.5–6.5</span>
+          <span class="l-veo">Veo &gt;6.5</span>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Noise StdDev</div>
+          <div class="stat-value" id="statStd">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Noise Mean</div>
+          <div class="stat-value" id="statMean">—</div>
+        </div>
+      </div>
+
+      <!-- Laplacian heatmap -->
+      <div class="heatmap-wrap">
+        <div class="heatmap-title">Laplacian Heatmap — Middle Frame</div>
+        <img id="heatmapImg" src="" alt="Laplacian heatmap" />
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item sora">
+        <div class="legend-title">Sora</div>
+        std &lt; 4.5<br>mean &lt; 2.0
+      </div>
+      <div class="legend-item veo">
+        <div class="legend-title">Veo</div>
+        std &gt; 6.5<br>mean &gt; 3.0
+      </div>
+      <div class="legend-item real">
+        <div class="legend-title">Real</div>
+        std 4.5–6.5<br>mean 2.0–3.0
+      </div>
+    </div>
+  </div>
+
+  <div class="credit">
+    Built by <a href="https://www.linkedin.com/in/statisticianmunizanaqvi/" target="_blank" rel="noopener">Muniza Naqvi</a>
+    &nbsp;·&nbsp; Laplacian high-pass filtering on 15 sampled frames
+  </div>
+
+  <script>
+    const monster = document.getElementById('monster-wrapper');
+    const statusEl = document.getElementById('status');
+    const errorEl = document.getElementById('error');
+    const resultEl = document.getElementById('result');
+
+    let selectedFile = null;
+    let activeTab = 'upload';
+
+    // ─── Character State ───
+    function setCharacterState(state) {
+      monster.className = '';
+      monster.classList.add('state-' + state);
+
+      const eyesNormal = document.getElementById('eyes-normal');
+      const eyesAngry  = document.getElementById('eyes-angry');
+      const mouthSmile = document.getElementById('mouth-smile');
+      const mouthOpen  = document.getElementById('mouth-open');
+      const mouthFrown = document.getElementById('mouth-frown');
+
+      if (state === 'idle') {
+        eyesNormal.style.opacity = '1'; eyesAngry.style.opacity = '0';
+        mouthSmile.style.opacity = '1'; mouthOpen.style.opacity = '0'; mouthFrown.style.opacity = '0';
+      } else if (state === 'analyzing') {
+        eyesNormal.style.opacity = '1'; eyesAngry.style.opacity = '0';
+        mouthSmile.style.opacity = '0'; mouthOpen.style.opacity = '1'; mouthFrown.style.opacity = '0';
+      } else if (state === 'cookies') {
+        eyesNormal.style.opacity = '0'; eyesAngry.style.opacity = '1';
+        mouthSmile.style.opacity = '0'; mouthOpen.style.opacity = '0'; mouthFrown.style.opacity = '1';
+      }
+    }
+
+    // ─── Tabs ───
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.classList.toggle('active', (i === 0 && tab === 'upload') || (i === 1 && tab === 'url'));
+      });
+      document.getElementById('pane-upload').classList.toggle('active', tab === 'upload');
+      document.getElementById('pane-url').classList.toggle('active', tab === 'url');
+      clearUI();
+    }
+
+    // ─── File upload ───
+    function onFileSelected(e) {
+      const file = e.target.files[0];
+      if (file) { selectedFile = file; updateFileChosen(file.name); }
+    }
+    function updateFileChosen(name) {
+      document.getElementById('fileChosen').textContent = name ? '✓ ' + name : '';
+      document.getElementById('uploadBtn').disabled = !name;
+    }
+    function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
+    function handleDragLeave()  { document.getElementById('dropZone').classList.remove('drag-over'); }
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('dropZone').classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) { selectedFile = file; updateFileChosen(file.name); }
+    }
+
+    // ─── UI helpers ───
+    function setStatus(msg) {
+      statusEl.innerHTML = msg ? `<div class="spinner"></div><span>${msg}</span>` : '';
+    }
+    function showError(msg) { errorEl.textContent = msg; errorEl.classList.add('visible'); }
+    function clearUI() {
+      errorEl.classList.remove('visible');
+      resultEl.classList.remove('visible', 'real', 'ai-sora', 'ai-veo');
+      setStatus('');
+    }
+
+    // ─── Gauge helper ───
+    function setGaugeNeedle(noiseStd) {
+      // Gauge spans 0–11 total (4.5 Sora + 2 Real + 4.5 Veo cap)
+      const MAX = 11;
+      const pct = Math.min(100, (Math.min(noiseStd, MAX) / MAX) * 100);
+      document.getElementById('gaugeNeedle').style.left = pct + '%';
+    }
+
+    // ─── Analyze upload ───
+    async function analyzeUpload() {
+      if (!selectedFile) return;
+      const btn = document.getElementById('uploadBtn');
+      btn.disabled = true;
+      clearUI();
+      setCharacterState('analyzing');
+      setStatus('Extracting frames and analysing noise…');
+      try {
+        const form = new FormData();
+        form.append('file', selectedFile);
+        const resp = await fetch('/analyze/upload', { method: 'POST', body: form });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Analysis failed');
+        setStatus('');
+        renderResult(data);
+      } catch(err) {
+        setStatus('');
+        setCharacterState('idle');
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ─── Analyze URL ───
+    async function analyzeUrl() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) return;
+      const btn = document.getElementById('urlBtn');
+      btn.disabled = true;
+      clearUI();
+      setCharacterState('analyzing');
+      setStatus('Downloading video — this may take 30–60 seconds…');
+      const cookies = document.getElementById('cookiesInput').value;
+      try {
+        const resp = await fetch('/analyze/url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, cookies }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          const detail = data.detail || {};
+          if (detail.error_type === 'cookies_required' || (typeof detail === 'string' && detail.includes('cookies'))) {
+            setStatus('');
+            setCharacterState('cookies');
+            const det = document.getElementById('cookiesDetails');
+            det.open = true;
+            showError(detail.message || 'YouTube requires authentication. Please paste your cookies and retry.');
+          } else {
+            throw new Error(typeof detail === 'string' ? detail : (detail.message || 'Analysis failed'));
+          }
+          return;
+        }
+        setStatus('');
+        renderResult(data);
+      } catch(err) {
+        setStatus('');
+        setCharacterState('idle');
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ─── Render result ───
+    function renderResult(data) {
+      const cls = data.label.includes('Sora') ? 'ai-sora'
+                : data.label.includes('Veo')  ? 'ai-veo'
+                : 'real';
+      resultEl.className = `result visible ${cls}`;
+      document.getElementById('resultLabel').textContent = data.label;
+      document.getElementById('confidenceText').textContent = `${data.confidence}% confidence`;
+      document.getElementById('resultDetail').textContent = data.detail;
+      document.getElementById('statStd').textContent = data.noise_std;
+      document.getElementById('statMean').textContent = data.noise_mean;
+
+      const bar = document.getElementById('confidenceBar');
+      bar.style.width = '0%';
+      requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = data.confidence + '%'; }));
+
+      setGaugeNeedle(data.noise_std);
+
+      if (data.heatmap) {
+        document.getElementById('heatmapImg').src = 'data:image/png;base64,' + data.heatmap;
+      }
+
+      setCharacterState('idle');
+    }
+
+    // ─── Keyboard shortcut ───
+    document.getElementById('urlInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') analyzeUrl();
+    });
+
+    // Init
+    setCharacterState('idle');
+    // Keep cookies section collapsed by default — it opens automatically on auth error
+    document.getElementById('cookiesDetails').open = false;
+  </script>
+</body>
+</html>
